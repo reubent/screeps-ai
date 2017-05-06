@@ -10,7 +10,7 @@ var roleAttacker = require('role.attacker');
 var roleClaimer = require('role.claimer');
 var roleMulti = require('role.multi');
 var roleFetcher = require('role.fetcher');
-
+var roleFetcher2 = require('role.fetcher2');
 module.exports = {
     renewCreep: function (spawn) {
         var near = spawn.pos.findInRange(FIND_MY_CREEPS, 1);
@@ -176,7 +176,8 @@ module.exports = {
             towerRenewer: 0,
             attacker: 0,
             claimer: 0,
-            fetcher: 0
+            fetcher: 0,
+            fetcher2: 0
         };
 
         var creepIdCodes = {
@@ -191,7 +192,8 @@ module.exports = {
             towerRenewer: {},
             attacker: {},
             claimer: {},
-            fetcher: {}
+            fetcher: {},
+            fetcher2: {}
         }
 
         var names = {};
@@ -232,6 +234,9 @@ module.exports = {
             }
             if (creep.memory.role == 'fetcher') {
                 roleFetcher.run(creep);
+            }
+            if (creep.memory.role == 'fetcher2') {
+                roleFetcher2.run(creep);
             }
             if (creep.memory.role == 'attacker') {
                 roleAttacker.run(creep);

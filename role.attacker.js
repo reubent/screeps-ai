@@ -4,7 +4,7 @@ module.exports = {
     myType: "attacker",
     maxToCreate: 0,
     lineStyle: {
-        stroke: '#ff6666',
+        stroke: '#ff2020',
         strokeWidth: 0.3,
         opacity: 1,
         lineStyle: undefined
@@ -12,13 +12,20 @@ module.exports = {
     doSpawn: baseRole.doSpawn,
     handleTtl: baseRole.handleTtl,
     run: function (creep) {
-        if (creep.room.name == "W11S2") {
-            creep.say("Hello!", true);
-            var vector = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+        if (creep.room.name == "W17S3") {
+            creep.say("Hello💖", true);
+            var vector = creep.pos.findClosestByRange(FIND_STRUCTURES, {
+                    filter: function (o) {
+                        return o.structureType == STRUCTURE_TOWER || o.structureType == STRUCTURE_SPAWN;
+                    }
+                });
+            if (!vector) {
+                vector = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+            }
             if (!vector) {
                 vector = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                     filter: function (o) {
-                        if (o.structureType == STRUCTURE_CONTROLLER) {
+                        if (o.structureType == STRUCTURE_CONTROLLER || o.structureType == STRUCTURE_WALL || o.structureType == STRUCTURE_ROAD) {
                             return false;
                         }
                         return true;
@@ -40,7 +47,7 @@ module.exports = {
             console.log("Attack result " + result);
         } else {
             creep.say("Travel");
-            console.log(creep.moveTo(new RoomPosition(4, 10, "W11S2"), {visualizePathStyle: this.lineStyle}));
+            console.log(creep.moveTo(new RoomPosition(4, 10, "W17S3"), {visualizePathStyle: this.lineStyle}));
         }
     }
 };
