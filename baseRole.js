@@ -23,7 +23,7 @@ module.exports = {
             console.log(name + ": Basic creep - not renewable");
             return false;
         }
-        if (creep.memory.role !== "fetcher" && Object.keys(Memory.creepIdCodes[this.myType]).length > this.maxToCreate) {
+        if (creep.memory.role !== "fetcher" && creep.memory.role !== "fetcher2" && Object.keys(Memory.creepIdCodes[this.myType]).length > this.maxToCreate) {
             console.log(name + ": Not renewing - too many creeps of  type" + this.myType + "...");
             if (creep.carry.energy == 0) {
                 console.log("Not carrying anything so good night");
