@@ -14,16 +14,19 @@ module.exports = {
         }
         var name = creep.name.replace(/^[a-zA-Z]+/, "");
         var lifetime = Math.floor(Date.now() / 1000) - parseInt(name);
-        if (lifetime > 604800) {
-            console.log(name + ": Lifetime is " + lifetime + " so time to die...");
-            creep.suicide();
-            return true;
+        if (!creep.memory.role.match(/^fetcher/) && lifetime > 604800) {
+            if (creep.ticksToLive < 20) {
+                console.log(name + ": Lifetime is " + lifetime + " so time to die...");
+                creep.suicide();
+                return true;
+            }
+            return false;
         }
         if (typeof creep.memory.renewable !== "undefined" && creep.memory.renewable === false) {
             console.log(name + ": Basic creep - not renewable");
             return false;
         }
-        if (creep.memory.role !== "fetcher" && creep.memory.role !== "fetcher2" && Object.keys(Memory.creepIdCodes[this.myType]).length > this.maxToCreate) {
+        if (!creep.memory.role.match(/^fetcher/) && creep.ticksToLive < 20 && Object.keys(Memory.creepIdCodes[this.myType]).length > (typeof this.maxToCreate === "function" ? this.maxToCreate(creep.room) : this.maxToCreate)) {
             console.log(name + ": Not renewing - too many creeps of  type" + this.myType + "...");
             if (creep.carry.energy == 0) {
                 console.log("Not carrying anything so good night");
@@ -31,6 +34,13 @@ module.exports = {
                 creep.suicide();
             }
             return false;
+        }
+        if (creep.room.name != creep.memory.homeRoom) {
+            if (!creep.room.controller || !creep.room.controller.owner || creep.room.controller.owner.username != "ReubenT") {
+                creep.moveTo(new RoomPosition(20, 20, creep.memory.homeRoom), {visualizePathStyle: this.lineStyle});
+                creep.say("Go home", true);
+                return true;
+            }
         }
         var target = creep.pos.findClosestByRange(FIND_STRUCTURES, {
             filter: function (structure) {
@@ -40,11 +50,16 @@ module.exports = {
         if (target && target.spawning && creep.carry.energy > 100) {
             return false;
         }
-        creep.say("Renew");
-        console.log(name + ": Sending " + creep.name + " to " + (target ? target.name : "nowhere") + " for renewal as lifetime is " + lifetime + " with TTL of " + creep.ticksToLive);
-        creep.moveTo(target, {visualizePathStyle: this.lineStyle});
-        creep.memory.committed = target.id;
-        return true;
+        if (target) {
+            creep.say("Renew");
+            console.log(name + ": Sending " + creep.name + " to " + (target ? target.name : "nowhere") + " for renewal as lifetime is " + lifetime + " with TTL of " + creep.ticksToLive);
+            creep.moveTo(target, {visualizePathStyle: this.lineStyle});
+            creep.memory.committed = target.id;
+        
+            return true;
+        }
+        creep.say(":S");
+        return false;
     },
     findGameSource: function (creep) {
         var sources = creep.room.find(FIND_SOURCES, {
@@ -75,7 +90,7 @@ module.exports = {
     },
     findLinkAsSource: function (creep) {
         //console.log(creep.name+" Looking for link as source");
-        var sources = creep.pos.findInRange(FIND_STRUCTURES, 15, {
+        var sources = creep.pos.findInRange(FIND_STRUCTURES, 8, {
             filter: function (structure) {
                 var spaceUsed = structure.energy;
                 return structure.structureType == STRUCTURE_LINK && spaceUsed > 0;
@@ -90,7 +105,7 @@ module.exports = {
     findStorage: function (creep) {
         var sources = creep.room.find(FIND_STRUCTURES, {
             filter: function (structure) {
-                return structure.structureType == STRUCTURE_STORAGE;
+                return structure.structureType == STRUCTURE_STORAGE || structure.structureType == STRUCTURE_TERMINAL;
             }
         });
         if (sources.length) {
@@ -107,7 +122,7 @@ module.exports = {
         } else {
             if (creep.memory.role == "upgrader" && creep.room.name == "W19S5") {
                 var mySource = Game.getObjectById("55c34a6c5be41a0a6e80c7b3");
-                if (mySource.energy > 0) {
+                if (mySource.energy > 0 || mySource.ticksToRegeneration < 30) {
                     source = mySource;
                 } else {
                     source = this.findStoreAsSource(creep);
@@ -190,7 +205,7 @@ module.exports = {
             console.log("Nothing to spawn");
             return false;
         }
-        if (extant < this.maxToCreate) {
+        if (extant < (typeof this.maxToCreate === "function" ? this.maxToCreate(spawn.room) : this.maxToCreate)) {
             var renewable = true;
             if (this.hasOwnProperty("spawnInit")) {
                 renewable = this.spawnInit(spawn);

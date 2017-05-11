@@ -1,9 +1,8 @@
 var baseRole = require("baseRole");
-var roleMulti = {
+var roleMulti = Object.assign({}, baseRole, {
     units: [WORK, MOVE, MOVE, CARRY],
     myType: "multi",
-    maxToCreate: 2,
-    findLinkAsSource: baseRole.findLinkAsSource,
+    maxToCreate: () => 2,
     isTarget: function (structure) {
         return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
                 structure.energy < structure.energyCapacity;
@@ -25,12 +24,6 @@ var roleMulti = {
     spawnInit: function (spawn) {
         return true;
     },
-    doSpawn: baseRole.doSpawn,
-    doHarvest: baseRole.doHarvest,
-    handleTtl: baseRole.handleTtl,
-    findStoreAsSource: baseRole.findStoreAsSource,
-    findGameSource: baseRole.findGameSource,
-    findStorage: baseRole.findStorage,
     findDroppedResources: function (creep, energyOnly) {
         return creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
             filter: function (resource) {
@@ -53,7 +46,7 @@ var roleMulti = {
                 //console.log("Using stores");
                 source = this.findStoreAsSource(creep);
             }
-            if (!source && creep.room.name == "W19S5") {
+            if (!source && (creep.room.name == "W19S5" || creep.room.name == "W19S8")) {
                 //console.log("Using game source");
                 source = this.findGameSource(creep);
             }
@@ -77,7 +70,16 @@ var roleMulti = {
     },
     /** @param {Creep} creep **/
     run: function (creep) {
-
+//        if (creep.memory.creepIndex == 1 && creep.room.name !== "W19S8") {
+//            creep.moveTo(new RoomPosition(10,10,"W19S8"));
+//            creep.say("Emigrate");
+//            return;
+//        } else
+        if (!creep.room.controller || !creep.room.controller.owner || creep.room.controller.owner.username != "ReubenT") {
+            creep.moveTo(new RoomPosition(20, 20, creep.memory.homeRoom), {visualizePathStyle: this.lineStyle} );
+            creep.say("go home");
+            return;
+        }
         // if we're being renewed, wait
         if (typeof creep.memory.sleeping !== "undefined" && creep.memory.sleeping > 0) {
             creep.say("Wait!");
@@ -167,7 +169,7 @@ var roleMulti = {
         // failing that, is there something to build?
         targets = creep.room.find(FIND_MY_CONSTRUCTION_SITES, {
             filter: function (site) {
-                return site.structureType == STRUCTURE_ROAD;//true || site.structureType === STRUCTURE_WALL || site.structureType === STRUCTURE_RAMPART;
+                return site.structureType !== STRUCTURE_ROAD; // && site.structureType !== STRUCTURE_RAMPART;
             }
         });
         if (!targets.length) {
@@ -274,6 +276,6 @@ var roleMulti = {
     findTarget: function (targets, creep) {
         return creep.pos.findClosestByPath(targets);
     }
-};
+});
 
 module.exports = roleMulti;

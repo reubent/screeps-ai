@@ -12,7 +12,7 @@ module.exports = {
     doSpawn: baseRole.doSpawn,
     handleTtl: baseRole.handleTtl,
     run: function (creep) {
-        if (creep.room.name == "W17S3") {
+        if (creep.room.name == "W19S4") {
             creep.say("Hello💖", true);
             var vector = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                     filter: function (o) {
@@ -47,7 +47,7 @@ module.exports = {
             console.log("Attack result " + result);
         } else {
             creep.say("Travel");
-            console.log(creep.moveTo(new RoomPosition(4, 10, "W17S3"), {visualizePathStyle: this.lineStyle}));
+            console.log(creep.moveTo(new RoomPosition(4, 10, "W19S4"), {visualizePathStyle: this.lineStyle}));
         }
     }
 };

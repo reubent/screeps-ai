@@ -15,7 +15,9 @@ module.exports = {
         HEAL, HEAL
     ],
     myType: "healer",
-    maxToCreate: 0,
+    maxToCreate: (room) => room.find(FIND_MY_CREEPS, {
+        filter: (c) => c.hits < c.hitsMax
+    }).length,
     doSpawn: baseRole.doSpawn,
     handleTtl: baseRole.handleTtl,
     run: function (creep) {

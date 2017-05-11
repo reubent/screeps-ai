@@ -17,17 +17,18 @@ if (!('toJSON' in Error.prototype))
     });
 /**
  * TODO 
- * 1. Automatically spawn defenders when attacked
+ * 1. ~Automatically spawn defenders when attacked~
  * 2. Recycle unneeded creeps
  * 3. ~Make builders / collectors / repairers multipurpose~
- * 4. Spawn healers when needed
+ * 4. ~Spawn healers when needed~
  * 5. ~Stop non harvesters from harvesting~
  */
 module.exports.loop = function () {
     PathFinder.use(true);
     var spawns = {
         W19S5: Game.getObjectById("58e951689f9ea168315dfbea"),
-        W19S6: Game.getObjectById("58fa556422b94c634acededb")
+        W19S6: Game.getObjectById("58fa556422b94c634acededb"),
+        W19S8: Game.getObjectById("5911e092016b45434afdcf1c")
     };
     var fromLink = Game.getObjectById("5907bedc0f2f023266938df5");
     if (fromLink.energy > 199) {
@@ -37,6 +38,23 @@ module.exports.loop = function () {
             fromLink.transferEnergy(toLink);
         }
     }
+    fromLink = Game.getObjectById("590eed92587c9fb629dee2b3");
+    if (fromLink.energy > 199) {
+        toLink = Game.getObjectById("5911370f079831210aa1c237");
+        if (toLink.energy < toLink.energyCapacity) {
+            console.log("Sending " + fromLink.energy + " to " + toLink.id);
+            fromLink.transferEnergy(toLink);
+        }
+    }
+    fromLink = Game.getObjectById("59103a031232aedb4c0e11f4");
+    if (fromLink.energy > 199) {
+        toLink = Game.getObjectById("5911370f079831210aa1c237");
+        if (toLink.energy < toLink.energyCapacity) {
+            console.log("Sending " + fromLink.energy + " to " + toLink.id);
+            fromLink.transferEnergy(toLink);
+        }
+    }
+    
     for (var i in spawns) {
         var spawn = spawns[i];
         console.log("========== Cycle start..." + spawn.room.energyAvailable + " / " + spawn.room.energyCapacityAvailable + " in room " + spawn.room.name);

@@ -5,7 +5,7 @@ var roleFetcher = {
         MOVE, MOVE, MOVE, MOVE, MOVE,
         CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY
     ],
-    myType: "fetcher2",
+    myType: "fetcher3",
     maxToCreate: 3,
     lineStyle: {
         stroke: '#3aff0a',
@@ -39,8 +39,8 @@ var roleFetcher = {
             creep.say("Flee!");
         }
         if (creep.carry.energy < creep.carryCapacity && !creep.memory.fleeing) {
-            if (creep.room.name == "W18S5") {
-                creep.moveTo(new RoomPosition(11, 46, "W18S4"), {visualizePathStyle: this.lineStyle, reusePath: 20});
+            if (creep.room.name != "W18S6") {
+                creep.moveTo(new RoomPosition(11, 46, "W18S6"), {visualizePathStyle: this.lineStyle, reusePath: 20});
                 creep.say("travel");
                 return;
             }
@@ -61,7 +61,7 @@ var roleFetcher = {
             creep.say("travel");
             return;
         }
-        var target = Game.getObjectById("590eed92587c9fb629dee2b3");
+        var target = Game.getObjectById("59103a031232aedb4c0e11f4");
         if (800 - target.energy < creep.carry.energy) {
             target = Game.getObjectById("58ff6aa6c7657933c50b824a");
         }

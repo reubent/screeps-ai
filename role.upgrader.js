@@ -36,6 +36,11 @@ var roleUpgrader = {
             this.handleTtl(creep);
             return;
         }
+//        if (creep.memory.creepIndex == 1 && creep.room.name !== "W19S8") {
+//            creep.moveTo(new RoomPosition(10,10,"W19S8"));
+//            creep.say("Emigrate");
+//            return;
+//        }
         if (creep.memory.upgrading && creep.carry.energy == 0) {
             creep.memory.upgrading = false;
             creep.say('🔄 harvest');

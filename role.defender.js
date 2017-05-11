@@ -1,21 +1,26 @@
-/*
- * Module code goes here. Use 'module.exports' to export things:
- * module.exports.thing = 'a thing';
- *
- * You can import it from another modules like this:
- * var mod = require('role.defender');
- * mod.thing == 'a thing'; // true
- */
-
 var baseRole = require("baseRole");
-module.exports = {
+module.exports = Object.assign({}, baseRole, {
     units: [
         TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
         MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
         ATTACK, ATTACK, ATTACK
     ],
     myType: "defender",
-    maxToCreate: 0,
+    maxToCreate: (room) => {
+        var hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+        if (hostiles > 0) {
+            var towers = room.find(FIND_STRUCTURES, {
+                filter: (o) => o.structureType === STRUCTURE_TOWER
+            });
+            if (towers.length) {
+                var power = towers.reduce((total, my) => total += my.energy, 0);
+                if (power < 200) {
+                    return hostiles;
+                }
+            }
+        }
+        return 0;
+    },
     lineStyle: {
         stroke: '#ff0000',
         strokeWidth: 0.4,
@@ -39,8 +44,6 @@ module.exports = {
                 //[ 5, 18],
                 //[ 5, 12]
     ],
-    doSpawn: baseRole.doSpawn,
-    handleTtl: baseRole.handleTtl,
     run: function (creep) {
 
         if (typeof creep.memory.sleeping !== "undefined" && creep.memory.sleeping > 0) {
@@ -69,10 +72,10 @@ module.exports = {
             var homePosition = this.homePositions[creep.memory.creepIndex];
             creep.moveTo(homePosition[0], homePosition[1], {reusePath: 20, visualizePathStyle: this.lineStyle});
             // if we created lots of defenders to repel an attack, kill them when we no longer need them
-            if (creep.memory.creepIndex > this.maxToCreate && Math.random > 0.85) {
+            if (creep.memory.creepIndex > this.maxToCreate(creep.room) && Math.random > 0.85) {
                 creep.suicide();
             }
         }
 
     }
-};
+});

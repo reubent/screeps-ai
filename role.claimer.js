@@ -4,7 +4,7 @@ module.exports = {
     myType: "claimer",
     maxToCreate: 0,
     lineStyle: {
-        stroke: '#aaffaa',
+        stroke: '#ff0000',
         strokeWidth: 0.4,
         opacity: 1,
         lineStyle: undefined
@@ -20,7 +20,7 @@ module.exports = {
             creep.say("Tired 😟");
             return;
         }
-        if (creep.room.name == "W18S5") {
+        if (creep.room.name == "W19S8") {
             console.log("In room!");
             var source = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                 filter: function (o) {
@@ -39,7 +39,7 @@ module.exports = {
             }
             return;
         }
-        var move = creep.moveTo(new RoomPosition(14, 42, "W18S5"), {visualizePathStyle: this.lineStyle});
+        var move = creep.moveTo(new RoomPosition(14, 42, "W19S8"), {visualizePathStyle: this.lineStyle});
         if (move !== OK) {
             console.log("Claim move result " + move);
         }

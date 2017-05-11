@@ -1,9 +1,13 @@
 var baseRole = require("baseRole");
-var roleHarvester = {
+var roleHarvester = Object.assign({}, baseRole, {
     units: [WORK, MOVE, MOVE, CARRY],
     myType: "harvester",
-    maxToCreate: 3,
-    findEnergySource: baseRole.findEnergySource,
+    maxToCreate: (room) => {
+        if (Memory[room.name] && Memory[room.name].harvestable) {
+            return Memory[room.name].harvestable;
+        }
+        return 3;
+    },
     isTarget: function (structure) {
         return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
                 structure.energy < structure.energyCapacity;
@@ -29,11 +33,6 @@ var roleHarvester = {
     spawnInit: function (spawn) {
         return this.getUnits(spawn).length > 3 || spawn.room.energyCapacityAvailable < 301;
     },
-    doSpawn: baseRole.doSpawn,
-    doHarvest: baseRole.doHarvest,
-    handleTtl: baseRole.handleTtl,
-    findStoreAsSource: baseRole.findStoreAsSource,
-    findGameSource: baseRole.findGameSource,
     /** @param {Creep} creep **/
     run: function (creep) {
         if (typeof creep.memory.sleeping !== "undefined" && creep.memory.sleeping > 0) {
@@ -124,6 +123,10 @@ var roleHarvester = {
                     return;
                 }
                 creep.say("😴 idle");
+                result = creep.move(RIGHT);
+                if (result != OK) {
+                    creep.move(TOP);
+                }
                 //creep.moveTo(19, 30+creep.memory.creepIndex, {visualizePathStyle: this.lineStyle});
             }
         }
@@ -131,6 +134,6 @@ var roleHarvester = {
     findTarget: function (targets, creep) {
         return creep.pos.findClosestByPath(targets);
     }
-};
+});
 
 module.exports = roleHarvester;

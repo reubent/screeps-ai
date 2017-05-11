@@ -1,16 +1,15 @@
 var roleHarvester = require('role.harvester');
 var roleUpgrader = require('role.upgrader');
-var roleBuilder = require('role.builder');
 var roleDefender = require('role.defender');
 var roleHealer = require('role.healer');
-var roleRepairer = require('role.repairer');
-var roleCollector = require('role.collector');
 var roleTowerRenewer = require('role.towerRenewer');
 var roleAttacker = require('role.attacker');
 var roleClaimer = require('role.claimer');
 var roleMulti = require('role.multi');
 var roleFetcher = require('role.fetcher');
 var roleFetcher2 = require('role.fetcher2');
+var roleFetcher3 = require('role.fetcher3');
+var roleFetcher4 = require('role.fetcher4');
 module.exports = {
     renewCreep: function (spawn) {
         var near = spawn.pos.findInRange(FIND_MY_CREEPS, 1);
@@ -99,6 +98,7 @@ module.exports = {
         }
     },
     spawn: function (spawn, creepsByType) {
+        console.log("Should have "+roleDefender.maxToCreate(spawn.room)+" of selected");
         console.log("Extant creeps: " + JSON.stringify(creepsByType));
         if (roleHarvester.doSpawn(spawn, creepsByType[roleHarvester.myType])) {
             return;
@@ -146,19 +146,8 @@ module.exports = {
             return;
         }
 
-        if (roleBuilder.doSpawn(spawn, creepsByType[roleBuilder.myType])) {
-            return;
-        }
-
-        if (roleRepairer.doSpawn(spawn, creepsByType[roleRepairer.myType])) {
-            return;
-        }
-
         if (creepsByType.harvester == roleHarvester.maxToCreate && creepsByType.upgrader == roleUpgrader.maxToCreate && creepsByType.defender == roleDefender.maxToCreate) {
             if (roleAttacker.doSpawn(spawn, creepsByType[roleAttacker.myType])) {
-                return;
-            }
-            if (roleCollector.doSpawn(spawn, creepsByType[roleCollector.myType])) {
                 return;
             }
         }
@@ -167,33 +156,31 @@ module.exports = {
         var creepsByType = {
             harvester: 0,
             multi: 0,
-            repairer: 0,
             upgrader: 0,
-            builder: 0,
             healer: 0,
             defender: 0,
-            collector: 0,
             towerRenewer: 0,
             attacker: 0,
             claimer: 0,
             fetcher: 0,
-            fetcher2: 0
+            fetcher2: 0,
+            fetcher3: 0,
+            fetcher4: 0
         };
 
         var creepIdCodes = {
             harvester: {},
             multi: {},
-            repairer: {},
             upgrader: {},
-            builder: {},
             healer: {},
             defender: {},
-            collector: {},
             towerRenewer: {},
             attacker: {},
             claimer: {},
             fetcher: {},
-            fetcher2: {}
+            fetcher2: {},
+            fetcher3: {},
+            fetcher4: {}
         }
 
         var names = {};
@@ -238,23 +225,20 @@ module.exports = {
             if (creep.memory.role == 'fetcher2') {
                 roleFetcher2.run(creep);
             }
+            if (creep.memory.role == 'fetcher3') {
+                roleFetcher3.run(creep);
+            }
+            if (creep.memory.role == 'fetcher4') {
+                roleFetcher4.run(creep);
+            }
             if (creep.memory.role == 'attacker') {
                 roleAttacker.run(creep);
-            }
-            if (creep.memory.role == 'collector') {
-                roleCollector.run(creep);
             }
             if (creep.memory.role == 'multi') {
                 roleMulti.run(creep);
             }
             if (creep.memory.role == 'upgrader') {
                 roleUpgrader.run(creep);
-            }
-            if (creep.memory.role == 'builder') {
-                roleBuilder.run(creep);
-            }
-            if (creep.memory.role == 'repairer') {
-                roleRepairer.run(creep);
             }
             if (creep.memory.role == 'healer') {
                 roleHealer.run(creep);

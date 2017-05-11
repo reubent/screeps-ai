@@ -5,7 +5,7 @@ var roleFetcher = {
         MOVE, MOVE, MOVE, MOVE, MOVE,
         CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY
     ],
-    myType: "fetcher2",
+    myType: "fetcher4",
     maxToCreate: 3,
     lineStyle: {
         stroke: '#3aff0a',
@@ -18,10 +18,10 @@ var roleFetcher = {
     },
     doSpawn: baseRole.doSpawn,
     handleTtl: function (creep) {
-        if (creep.room.name === "W18S5") {
+        if (creep.room.name === "W19S5") {
             return baseRole.handleTtl(creep);
         }
-        creep.moveTo(new RoomPosition(14, 2, "W18S5"));
+        creep.moveTo(new RoomPosition(14, 2, "W19S5"));
         return false;
     },
     /** @param {Creep} creep **/
@@ -39,8 +39,8 @@ var roleFetcher = {
             creep.say("Flee!");
         }
         if (creep.carry.energy < creep.carryCapacity && !creep.memory.fleeing) {
-            if (creep.room.name == "W18S5") {
-                creep.moveTo(new RoomPosition(11, 46, "W18S4"), {visualizePathStyle: this.lineStyle, reusePath: 20});
+            if (creep.room.name != "W19S6") {
+                creep.moveTo(new RoomPosition(11, 46, "W19S6"), {visualizePathStyle: this.lineStyle, reusePath: 20});
                 creep.say("travel");
                 return;
             }
@@ -56,15 +56,12 @@ var roleFetcher = {
             }
         }
 
-        if (creep.room.name !== "W18S5") {
-            creep.moveTo(new RoomPosition(14, 2, "W18S5"), {visualizePathStyle: this.lineStyle, reusePath: 20});
+        if (creep.room.name !== "W19S5") {
+            creep.moveTo(new RoomPosition(14, 2, "W19S5"), {visualizePathStyle: this.lineStyle, reusePath: 20});
             creep.say("travel");
             return;
         }
-        var target = Game.getObjectById("590eed92587c9fb629dee2b3");
-        if (800 - target.energy < creep.carry.energy) {
-            target = Game.getObjectById("58ff6aa6c7657933c50b824a");
-        }
+        var target = Game.getObjectById("58f642a43c56e38010857444");
         var result = creep.transfer(target, RESOURCE_ENERGY);
         if (result == ERR_NOT_IN_RANGE) {
             if (creep.fatigue > 0) {
