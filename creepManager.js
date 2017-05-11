@@ -1,4 +1,5 @@
 var roleHarvester = require('role.harvester');
+var roleFastHarvester = require('role.fastHarvester');
 var roleUpgrader = require('role.upgrader');
 var roleDefender = require('role.defender');
 var roleHealer = require('role.healer');
@@ -98,13 +99,17 @@ module.exports = {
         }
     },
     spawn: function (spawn, creepsByType) {
-        console.log("Should have "+roleDefender.maxToCreate(spawn.room)+" of selected");
-        console.log("Extant creeps: " + JSON.stringify(creepsByType));
+        //console.log("Should have "+roleFastHarvester.maxToCreate(spawn.room)+" of selected");
+        
         if (roleHarvester.doSpawn(spawn, creepsByType[roleHarvester.myType])) {
             return;
         }
         if (creepsByType.harvester < 1) {
             console.log("No harvesters so not trying other types");
+            return;
+        }
+        
+        if (roleFastHarvester.doSpawn(spawn, creepsByType[roleFastHarvester.myType])) {
             return;
         }
 
@@ -155,6 +160,7 @@ module.exports = {
     checkCreepsInRoom: function (spawn) {
         var creepsByType = {
             harvester: 0,
+            fastHarvester: 0,
             multi: 0,
             upgrader: 0,
             healer: 0,
@@ -170,6 +176,7 @@ module.exports = {
 
         var creepIdCodes = {
             harvester: {},
+            fastHarvester: {},
             multi: {},
             upgrader: {},
             healer: {},
@@ -204,20 +211,33 @@ module.exports = {
             }
         }
         console.log("lowest ttl is " + lowestTtl + " for creep " + lowestTtlName);
-
+        if (typeof Memory.eaters === "undefined") {
+            Memory.eaters = {};
+        }
+        
         for (var i in Memory.creeps) {
             if (!names.hasOwnProperty(i)) {
                 console.log(i + " is gone... killing");
                 delete Memory.creeps[i];
+                for (var k in Memory.eaters) {
+                    if (Memory.eaters.hasOwnProperty(k) && Memory.eaters[k] == i) {
+                        console.log("Removing entry for "+k+" from eaters");
+                        delete Memory.eaters[k];
+                    }
+                }
             }
         }
         Memory.creepIdCodes = creepIdCodes;
+        console.log("Extant creeps: " + JSON.stringify(creepsByType));
         return creepsByType;
     },
     runCreep: function (creep) {
         try {
             if (creep.memory.role == 'harvester') {
                 roleHarvester.run(creep);
+            }
+            if (creep.memory.role == 'fastHarvester') {
+                roleFastHarvester.run(creep);
             }
             if (creep.memory.role == 'fetcher') {
                 roleFetcher.run(creep);

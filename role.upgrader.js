@@ -25,6 +25,7 @@ var roleUpgrader = {
     },
     /** @param {Creep} creep **/
     run: function (creep) {
+        
         // for upgraders they might as well be the secondary source for now as it's nearer
         var source = creep.room.controller;
         if (typeof creep.memory.sleeping !== "undefined" && creep.memory.sleeping > 0) {

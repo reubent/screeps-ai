@@ -54,6 +54,11 @@ module.exports.loop = function () {
             fromLink.transferEnergy(toLink);
         }
     }
+    for (var p in Memory.eaters) {
+        if (Memory.eaters.hasOwnProperty(p)) {
+            console.log("Eater "+Memory.eaters[p]+ " is assigned to source "+p);
+        }
+    }
     
     for (var i in spawns) {
         var spawn = spawns[i];

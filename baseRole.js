@@ -67,7 +67,12 @@ module.exports = {
                 return thisSource.energy > 0 || thisSource.ticksToRegeneration < 20;
             }
         });
-        return creep.pos.findClosestByPath(sources);
+        var fastHarvesters = creep.room.find(FIND_MY_CREEPS, {
+            filter: function (thisCreep) {
+                return thisCreep.memory.role == "fastHarvester" && creep.carry.energy > 0;
+            }
+        })
+        return creep.pos.findClosestByPath(fastHarvesters.length ? fastHarvesters : sources);
     },
     findStoreAsSource: function (creep) {
         var sources = [];
@@ -157,7 +162,10 @@ module.exports = {
             return -999;
         }
         var result;
-        if (typeof source.structureType !== "undefined" && (source.store || source.energy)) {
+        if (source instanceof Creep) {
+            creep.say("reslurp");
+            result = creep.pos.inRangeTo(source,1) ? OK : ERR_NOT_IN_RANGE;
+        } else if (typeof source.structureType !== "undefined" && (source.store || source.energy)) {
             if (source.store && source.store[RESOURCE_ENERGY] === 0) {
                 creep.memory.committed = undefined;
                 return;
@@ -187,11 +195,10 @@ module.exports = {
                 creep.say("Tired 😟");
                 return result;
             }
-
-            var moveResult = creep.moveTo(source, {visualizePathStyle: this.lineStyle});
+            var moveResult = creep.moveTo(source, {visualizePathStyle: this.lineStyle, ignoreCreeps: !creep.pos.inRangeTo(source, 15)});
             if (moveResult === ERR_NO_PATH) {
                 creep.say("No path");
-                creep.memory.committed = undefined;
+                //creep.memory.committed = undefined;
             }
             return moveResult;
         } else {

@@ -6,7 +6,7 @@ var roleHarvester = Object.assign({}, baseRole, {
         if (Memory[room.name] && Memory[room.name].harvestable) {
             return Memory[room.name].harvestable;
         }
-        return 3;
+        return 2;
     },
     isTarget: function (structure) {
         return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
