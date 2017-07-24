@@ -1,5 +1,5 @@
 module.exports = {
-    handleTtl: function (creep, helper) {
+    handleTtl: function (creep, helperObject) {
         if (creep.ticksToLive > 200) {
             return false;
         }
@@ -33,7 +33,7 @@ module.exports = {
                 return true;
             }
         }
-        var target = helper.findSpawn(creep);
+        var target = helperObject.findSpawn(creep);
         //console.log("target is "+JSON.stringify(target));
         if (target && target.spawning && creep.carry.energy > 100) {
             return false;
