@@ -27,9 +27,14 @@ module.exports.loop = function () {
     PathFinder.use(true);
     var spawns = {
         W19S5: Game.getObjectById("58e951689f9ea168315dfbea"),
-        W19S6: Game.getObjectById("58fa556422b94c634acededb"),
-        W19S8: Game.getObjectById("5911e092016b45434afdcf1c")
+        W18S5: Game.getObjectById("58fa556422b94c634acededb"),
+        W19S8: Game.getObjectById("5911e092016b45434afdcf1c"),
+        W19S6: Game.getObjectById("5943a0b8a33a7828193f627b")
     };
+    var renewOnlySpawns = {
+        W19S5: Game.getObjectById("592bd57cd2719e1c26e8ddd9"),
+        W18S5: Game.getObjectById("593441426e2b7a437b256800")
+    }
     var fromLink = Game.getObjectById("5907bedc0f2f023266938df5");
     if (fromLink.energy > 199) {
         var toLink = Game.getObjectById(Math.random() > 0.5 ? "5907a84a3afd5e543f62a80f" : "590771647f2c853d72183bee");
@@ -62,6 +67,7 @@ module.exports.loop = function () {
     
     for (var i in spawns) {
         var spawn = spawns[i];
+        
         console.log("========== Cycle start..." + spawn.room.energyAvailable + " / " + spawn.room.energyCapacityAvailable + " in room " + spawn.room.name);
         var towers = spawn.room.find(FIND_MY_STRUCTURES, {
             filter: function (structure) {
@@ -73,7 +79,7 @@ module.exports.loop = function () {
                 towerManager.run(towers[tower]);
             } catch (e) {
                 console.log("ERROR: " + JSON.stringify(e) + " running tower");
-                game.notify("ERROR: " + JSON.stringify(e) + " running tower", 5);
+                Game.notify("ERROR: " + JSON.stringify(e) + " running tower", 5);
             }
         }
 
@@ -89,10 +95,20 @@ module.exports.loop = function () {
             }
         } catch (e) {
             console.log("ERROR: " + JSON.stringify(e) + " running renew");
-            game.notify("ERROR: " + JSON.stringify(e) + " running renew", 5);
+            Game.notify("ERROR: " + JSON.stringify(e) + " running renew", 5);
         }
 
         creepManager.spawn(spawn, creepsByType);
+    }
+    for (var i in renewOnlySpawns) {
+        try {
+            if (creepManager.renewCreep(renewOnlySpawns[i])) {
+                continue;
+            }
+        } catch (e) {
+            console.log("ERROR: " + JSON.stringify(e) + " running renew");
+            Game.notify("ERROR: " + JSON.stringify(e) + " running renew", 5);
+        }
     }
     console.log("========== RUNNING CREEPS");
     var count = 0;

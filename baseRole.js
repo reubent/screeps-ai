@@ -1,14 +1,5 @@
-/*
- * Module code goes here. Use 'module.exports' to export things:
- * module.exports.thing = 'a thing';
- *
- * You can import it from another modules like this:
- * var mod = require('baseRole');
- * mod.thing == 'a thing'; // true
- */
-
 module.exports = {
-    handleTtl: function (creep) {
+    handleTtl: function (creep, helperObj) {
         if (creep.ticksToLive > 200) {
             return false;
         }
@@ -42,11 +33,8 @@ module.exports = {
                 return true;
             }
         }
-        var target = creep.pos.findClosestByRange(FIND_STRUCTURES, {
-            filter: function (structure) {
-                return structure.structureType == STRUCTURE_SPAWN;
-            }
-        });
+        var target = helperObj.findSpawn(creep);
+        //console.log("target is "+JSON.stringify(target));
         if (target && target.spawning && creep.carry.energy > 100) {
             return false;
         }
@@ -61,32 +49,13 @@ module.exports = {
         creep.say(":S");
         return false;
     },
-    findGameSource: function (creep) {
-        var sources = creep.room.find(FIND_SOURCES, {
-            filter: function (thisSource) {
-                return thisSource.energy > 0 || thisSource.ticksToRegeneration < 20;
-            }
-        });
-        var fastHarvesters = creep.room.find(FIND_MY_CREEPS, {
-            filter: function (thisCreep) {
-                return thisCreep.memory.role == "fastHarvester" && creep.carry.energy > 0;
-            }
-        })
-        return creep.pos.findClosestByPath(fastHarvesters.length ? fastHarvesters : sources);
+    findGameSource: function (creep, helper) {
+        var sources = helper.findGameSources();
+        return creep.pos.findClosestByPath(/*fastHarvesters.length ? fastHarvesters :*/ sources);
     },
-    findStoreAsSource: function (creep) {
-        var sources = [];
-        if (creep.memory.role !== "harvester" || creep.room.energyAvailable < creep.room.energyCapacityAvailable) {
-            sources = creep.room.find(FIND_STRUCTURES, {
-                filter: function (structure) {
-                    var spaceUsed = typeof structure.store !== "undefined" && structure.store[RESOURCE_ENERGY] > 10 ? structure.store[RESOURCE_ENERGY] : 0;
-                    if (spaceUsed == 0 && structure.structureType == STRUCTURE_LINK) {
-                        spaceUsed = structure.energy;
-                    }
-                    return (structure.structureType == STRUCTURE_STORAGE || structure.structureType == STRUCTURE_CONTAINER || structure.structureType == STRUCTURE_LINK) && spaceUsed > 0;
-                }
-            });
-        }
+    findStoreAsSource: function (creep, helper) {
+        var sources = helper.findStoreAsSource(creep);
+        
         if (sources.length == 0) {
             creep.say("😴");
             return;
@@ -98,7 +67,7 @@ module.exports = {
         var sources = creep.pos.findInRange(FIND_STRUCTURES, 8, {
             filter: function (structure) {
                 var spaceUsed = structure.energy;
-                return structure.structureType == STRUCTURE_LINK && spaceUsed > 0;
+                return structure.structureType == STRUCTURE_LINK && spaceUsed > 100;
             }
         });
         if (sources.length) {
@@ -118,44 +87,39 @@ module.exports = {
         }
         return undefined;
     },
-    findEnergySource: function (creep) {
+    findEnergySource: function (creep, helper) {
         var source;
-        // 10% chance of uncommitting to prevent logjams
-        if (false && typeof creep.memory.committed !== "undefined" && Math.random() < 0.95) {
+        // 20% chance of uncommitting to prevent logjams
+        if (typeof creep.memory.committed !== "undefined" && Math.random() < 0.8) {
             //console.log("Creep "+creep.name+" is committed to "+creep.memory.committed);
             source = Game.getObjectById(creep.memory.committed);
         } else {
-            if (creep.memory.role == "upgrader" && creep.room.name == "W19S5") {
-                var mySource = Game.getObjectById("55c34a6c5be41a0a6e80c7b3");
-                if (mySource.energy > 0 || mySource.ticksToRegeneration < 30) {
-                    source = mySource;
-                } else {
-                    source = this.findStoreAsSource(creep);
-                }
-            } else if (creep.memory.role == "harvester" || creep.memory.role == "towerRenewer") {
-                source = this.findGameSource(creep);
-                if (!source) {
-                    source = this.findStoreAsSource(creep);
-                }
-            } else {
-                source = this.findStoreAsSource(creep);
-                if (!source) {
-                    source = this.findGameSource(creep);
-                }
+            
+            source = this.findLinkAsSource(creep, helper);
+            if (!source) {
+                source = this.findGameSource(creep, helper);
             }
+            if (!source) {
+                source = this.findStoreAsSource(creep, helper);
+            }
+            
 
             if (source === null || typeof source === "undefined" && creep.memory.role !== "multi") {
                 creep.say("No path");
-                creep.move(TOP);
+                if (creep.pos.y > 2) {
+                    creep.move(TOP);
+                }
                 return;
             }
             // console.log("Committing "+creep.name+" to source "+source.id);
-            creep.memory.committed = source.id;
+            if (source.id) {
+                creep.memory.committed = source.id;
+            }
         }
         return source;
     },
-    doHarvest: function (creep) {
-        var source = this.findEnergySource(creep);
+    doHarvest: function (creep, helper) {
+        var source = this.findEnergySource(creep, helper);
         var harvesting = false;
         if (source === null || typeof source === "undefined") {
             creep.say("No sources");
@@ -164,7 +128,16 @@ module.exports = {
         var result;
         if (source instanceof Creep) {
             creep.say("reslurp");
+            if (source.memory.renewing) {
+                creep.memory.committed = undefined;
+            }
             result = creep.pos.inRangeTo(source,1) ? OK : ERR_NOT_IN_RANGE;
+            if (result === OK) {
+                var secondary = creep.pos.findInRange(FIND_SOURCES_ACTIVE,1);
+                if (secondary.length) {
+                    creep.harvest(secondary.pop());
+                }
+            }
         } else if (typeof source.structureType !== "undefined" && (source.store || source.energy)) {
             if (source.store && source.store[RESOURCE_ENERGY] === 0) {
                 creep.memory.committed = undefined;
