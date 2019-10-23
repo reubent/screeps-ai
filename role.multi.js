@@ -1,21 +1,24 @@
 var baseRole = require("baseRole");
+var roleTowerRenewer = require("role.towerRenewer")
 var roleMulti = Object.assign({}, baseRole, {
     units: [WORK, MOVE, MOVE, CARRY],
     myType: "multi",
-    maxToCreate: () => 2,
+    maxToCreate: (room) => {
+        return room.name == "W19S11" || room.name == "W14S8" ? 4 : 2;
+    },
     isTarget: function (structure) {
-        return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
-                structure.energy < structure.energyCapacity;
+        return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN || structure.structureType == STRUCTURE_POWER_SPAWN) &&
+            structure.energy < structure.energyCapacity;
     },
     lineStyle: {
         stroke: '#ffc0ff',
-        strokeWidth: 0.2,
+        strokeWidth: 0.1,
         opacity: 1,
         lineStyle: undefined
     },
     getUnits: function (spawn) {
         var units = [];
-        for (var i = 0; i < spawn.room.energyCapacityAvailable; i += 450) {
+        for (var i = 0; i < spawn.room.energyCapacityAvailable && i < 2200; i += 500) {
             units = units.concat(this.units);
         }
         console.log("multi: " + JSON.stringify(units));
@@ -24,167 +27,163 @@ var roleMulti = Object.assign({}, baseRole, {
     spawnInit: function (spawn) {
         return true;
     },
-    findDroppedResources: function (creep, energyOnly) {
-        return creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
-            filter: function (resource) {
-                return (!energyOnly || resource.resourceType === RESOURCE_ENERGY) && resource.amount > 25;
-            }
-        });
-    },
-    findEnergySource: function (creep) {
-        var source;
-        // 10% chance of uncommitting to prevent logjams
-        if (typeof creep.memory.committed !== "undefined" && Math.random() < 0.95) {
-            //console.log("Creep "+creep.name+" is committed to "+creep.memory.committed);
-            source = Game.getObjectById(creep.memory.committed);
-        } else {
-            source = this.findDroppedResources(creep, false);
-            if (!source) {
-                source = this.findLinkAsSource(creep);
-            }
-            if (!source) {
-                //console.log("Using stores");
-                source = this.findStoreAsSource(creep);
-            }
-            if (!source && (creep.room.name == "W19S5" || creep.room.name == "W19S8")) {
-                //console.log("Using game source");
-                source = this.findGameSource(creep);
-            }
-            if (source === null || typeof source === "undefined") {
-                creep.say("No path");
-                creep.move(TOP);
-                return;
-            }
-            // console.log("Committing "+creep.name+" to source "+source.id);
-            creep.memory.committed = source.id;
-        }
-        return source;
-    },
     hasNonEnergyResource: function (creep) {
-        for (var i in creep.carry) {
-            if (creep.carry.hasOwnProperty(i) && i !== RESOURCE_ENERGY && creep.carry[i] > 0) {
+        for (var i in creep.store) {
+            if (creep.store.hasOwnProperty(i) && i !== RESOURCE_ENERGY && creep.store[i] > 0) {
                 return i;
             }
         }
         return false;
     },
-    /** @param {Creep} creep **/
-    run: function (creep) {
-//        if (creep.memory.creepIndex == 1 && creep.room.name !== "W19S8") {
-//            creep.moveTo(new RoomPosition(10,10,"W19S8"));
-//            creep.say("Emigrate");
-//            return;
-//        } else
-        if (!creep.room.controller || !creep.room.controller.owner || creep.room.controller.owner.username != "ReubenT") {
-            creep.moveTo(new RoomPosition(20, 20, creep.memory.homeRoom), {visualizePathStyle: this.lineStyle} );
-            creep.say("go home");
-            return;
-        }
+
+    run: function (creep, roomData) {
         // if we're being renewed, wait
         if (typeof creep.memory.sleeping !== "undefined" && creep.memory.sleeping > 0) {
-            creep.say("Wait!");
+            creep.say("⏲️");
             creep.memory.sleeping--;
             return;
         }
         //creep.memory.mining = false;
         // if we've got < 100 ttl then let's get renewed
-        if (creep.ticksToLive < 120) {
-            this.handleTtl(creep);
+        if (creep.ticksToLive < 60 && this.handleTtl(creep, roomData)) {
             return;
         }
-        if (_.sum(creep.carry) < creep.carryCapacity && creep.memory.mining) {
-            this.goMining(creep);
+        if (_.sum(creep.store) < creep.store.getCapacity() && creep.memory.mining) {
+            this.goMining(creep, roomData);
             return;
         } else {
             creep.memory.mining = false;
         }
+        if (!roomData) {
+            if (!creep.room.controller || !creep.room.controller.my) {
+                if (creep.fatigue > 0) {
+                    creep.say("😴💤")
+                    return
+                }
+                creep.say("Lost")
+                creep.moveTo(new RoomPosition(20, 20, creep.memory.homeRoom), { visualizePathStyle: this.lineStyle, maxOps: 1000 })
+            }
+            return
+        }
         // if we're empty, go find some energy
-        if (_.sum(creep.carry) < 1 || creep.memory.harvesting) {
+        var needEnergy = roomData.needEnergy.length + roomData.construction.length;
+        //console.log(creep.room.name + ": needs energy "+needEnergy)
+        if (needEnergy > 0 && (_.sum(creep.store) < 1 || creep.memory.harvesting)) {
             //console.log(creep.id+": - harvesting");
-            var result = this.doHarvest(creep);
-            if (_.sum(creep.carry) == creep.carryCapacity) {
+            var result = this.doHarvest(creep, roomData);
+            if (_.sum(creep.store) == creep.store.getCapacity()) {
                 creep.memory.harvesting = false;
 
             } else if (result == ERR_NO_PATH || result === -999) {
-                if (this.goMining(creep) === false) {
-                    console.log("Mining as no path");
-                    creep.say("No path");
+                if (this.goMining(creep, roomData) === false) {
+                    // console.log("Mining as no path");
+                    creep.say("X");
                     creep.move(TOP);
                 }
             }
             return;
         }
+        var dropped;
+        if (_.sum(creep.store) < creep.store.getCapacity() / 2 && roomData.dropped.length > 0) {
+
+            var dropped = creep.pos.findClosestByRange(roomData.dropped);
+            if (dropped.amount > 20) {
+                creep.say("DROPPED")
+                var result = creep.pickup(dropped)
+                if (result !== OK) {
+                    if (creep.fatigue > 0) {
+                        creep.say("😴💤")
+                        return
+                    }
+                    creep.moveTo(dropped, { visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
+                    return;
+                }
+            }
+        }
+        if (_.sum(creep.store) < creep.store.getCapacity() / 2 && roomData.tombstones.length > 0) {
+            //console.log("Looking for tombstones")
+            var dropped = creep.pos.findClosestByRange(roomData.tombstones);
+            creep.say("⚰️")
+            var result = -1;
+            for (var i in dropped.store) {
+                if (dropped.store.hasOwnProperty(i) && dropped.store[i] > 50) {
+                    result = creep.withdraw(dropped, i)
+                    break;
+                }
+            }
+            if (result !== OK && result != -1) {
+                if (creep.fatigue > 0) {
+                    creep.say("😴💤")
+                    return
+                }
+                creep.moveTo(dropped, { visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
+                return;
+            }
+        }
+        creep.memory.harvesting = false;
         // if we're carrying something that's not energy, get rid of it
         var resource = this.hasNonEnergyResource(creep);
         if (resource !== false) {
             //console.log(creep.id+": - depositing resource");
             var target = this.findStorage(creep);
             if (target) {
-                creep.say("Store " + resource);
+                creep.say(resource);
                 var result = creep.transfer(target, resource);
                 if (result === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(target, {visualizePathStyle: this.lineStyle});
-                } else if (result != OK) {
-                    console.log("Error storing - " + result);
+                    if (creep.fatigue > 0) {
+                        creep.say("😴💤")
+                        return
+                    }
+                    creep.moveTo(target, { visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
                 }
                 return;
             }
         }
         // otherwise, find something useful to do...
-        if (this.handleTtl(creep)) {
-            //console.log(creep.id+": - renewing");
-            return;
-        }
+
         // find targets with less than full health as long as they have less than 1000 hit points
-        var towers = creep.room.find(FIND_STRUCTURES, {
-            filter: function (structure) {
-                return structure.structureType == STRUCTURE_TOWER;
-            }
-        });
         var repairers = 0;
-        for (var i in towers) {
-            if (towers[i].energy > 410) {
+        for (var i in roomData.towers) {
+            if (roomData.towers[i].energy > 410) {
                 repairers++;
             }
         }
-        if (repairers < 1) {
-            var targets = creep.room.find(FIND_STRUCTURES, {
-                filter: function (structure) {
-                    return structure.hits < Math.min(structure.hitsMax, 1000);
-                }
-            });
-            if (targets.length) {
-                //console.log(creep.id+": - repairing");
-                var target = creep.pos.findClosestByPath(targets);
-                if (creep.repair(target) === ERR_NOT_IN_RANGE) {
-                    creep.say("REPAIR");
-                    console.log("Repairing " + target.id + " which is of type " + target.structureType);
-                    creep.moveTo(target, {visualizePathStyle: this.lineStyle});
-                }
-                return;
+        if (repairers < 1 && roomData.repair.length) {
+            if (roomData.towers.length > 0) {
+                console.log("Using " + creep.name + " as tower renewer")
+                return roleTowerRenewer.run(creep, roomData)
             }
-        } else {
-            //console.log("Other repairers available");
-        }
-        // failing that, is there something to build?
-        targets = creep.room.find(FIND_MY_CONSTRUCTION_SITES, {
-            filter: function (site) {
-                return site.structureType !== STRUCTURE_ROAD; // && site.structureType !== STRUCTURE_RAMPART;
+            //console.log(creep.id+": - repairing");
+            var target = creep.pos.findClosestByRange(roomData.repair, { maxRooms: 1 });
+            if (creep.repair(target) === ERR_NOT_IN_RANGE) {
+                if (creep.fatigue > 0) {
+                    creep.say("😴💤")
+                    return
+                }
+                creep.say("🔧");
+                //console.log("Repairing " + target.id + " which is of type " + target.structureType);
+                creep.moveTo(target, { visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
             }
-        });
-        if (!targets.length) {
-            targets = creep.room.find(FIND_MY_CONSTRUCTION_SITES);
+            return;
         }
-        if (targets.length) {
-            //console.log(creep.id+": - building");
-            var target = creep.pos.findClosestByPath(targets);
+        if (roomData.construction.length) {
+            var target
+            if (roomData.highPriConstruction.length) {
+                target = creep.pos.findClosestByRange(roomData.highPriConstruction, { maxRooms: 1 });
+            } else {
+                target = creep.pos.findClosestByRange(roomData.construction, { maxRooms: 1 });
+            }
             if (typeof target !== "undefined") {
-                creep.say("Building");
+                creep.say("🏗️");
                 var result = creep.build(target);
                 if (result === ERR_NOT_IN_RANGE) {
-                    var moveTo = creep.moveTo(target, {visualizePathStyle: this.lineStyle});
+                    if (creep.fatigue > 0) {
+                        creep.say("😴💤")
+                        return
+                    }
+                    var moveTo = creep.moveTo(target, { visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
                     if (moveTo !== OK) {
-                        creep.say("Stuck!");
+                        creep.say("!");
                     }
                     return;
                 }
@@ -193,88 +192,160 @@ var roleMulti = Object.assign({}, baseRole, {
                 }
             }
         }
-        // if there are empty extensions, fill them...
-        var targets = creep.room.find(FIND_STRUCTURES, {
-            filter: function (structure) {
-                return (structure.structureType == STRUCTURE_EXTENSION) && structure.energy < structure.energyCapacity;
+        if (needEnergy) {
+            // if there are empty extensions, fill them...
+            var targets = roomData.needEnergyHighPriority;
+
+            if (targets.length < 1) {
+                targets = roomData.needEnergy;
             }
-        });
-        if (targets.length < 1) {
-            // and if there's nothing useful to do, store what we have. this may result in repeatedly storing/unstoring but that's better than losing the collector work
-            targets = creep.room.find(FIND_STRUCTURES, {
-                filter: function (structure) {
-                    var spaceUsed = _.sum(structure.store);
-                    return (structure.structureType == STRUCTURE_CONTAINER) && spaceUsed < structure.storeCapacity;
+
+            if (targets.length < 1) {
+                // and if there's nothing useful to do, store what we have. this may result in repeatedly storing/unstoring but that's better than losing the collector work
+                targets = [this.findStorage(creep)]
+            }
+
+            if (targets.length > 0) {
+                var target = this.findTarget(targets, creep);
+                var result = creep.transfer(target, RESOURCE_ENERGY);
+                if (result == ERR_NOT_IN_RANGE) {
+                    if (creep.fatigue > 0) {
+                        creep.say("😟");
+                        return;
+                    }
+                    creep.say('▶️ ');
+                    creep.moveTo(target, { visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
+                } else if (result == OK) {
+                    creep.memory.committed = undefined;
                 }
-            });
+                return;
+            }
         }
-        if (targets.length < 1) {
-            // and if there's nothing useful to do, store what we have. this may result in repeatedly storing/unstoring but that's better than losing the collector work
-            targets = creep.room.find(FIND_STRUCTURES, {
-                filter: function (structure) {
-                    var spaceUsed = _.sum(structure.store);
-                    return (structure.structureType == STRUCTURE_STORAGE) && spaceUsed < structure.storeCapacity;
-                }
-            });
-        }
-        if (targets.length > 0) {
-            //console.log(creep.id+": - depositing");
-            var target = this.findTarget(targets, creep);
-            var result = creep.transfer(target, RESOURCE_ENERGY);
-            if (result == ERR_NOT_IN_RANGE) {
+        if (_.sum(creep.store) == creep.store.getCapacity()) {
+            creep.say("Full")
+            if (creep.room.name != creep.memory.homeRoom) {
                 if (creep.fatigue > 0) {
-                    creep.say("Tired 😟");
-                    return;
+                    creep.say("😴💤")
+                    return
                 }
-                creep.say('▶️ move');
-                creep.moveTo(target, {visualizePathStyle: this.lineStyle});
-            } else if (result == OK) {
-                creep.memory.committed = undefined;
+                creep.moveTo(new RoomPosition(10, 10, creep.memory.homeRoom), { visualizePathStyle: this.lineStyle, maxRooms: 5, maxOps: 1000 })
+                creep.say("H")
             }
             return;
         }
-        // and if all else fails, let's go mining...
-        if (creep.carryCapacity > _.sum(creep.carry)) {
-            this.goMining(creep);
-        }
 
+        // and if all else fails, let's go mining...
+        if (creep.store.getCapacity() > _.sum(creep.store) && this.goMining(creep, roomData)) {
+            return;
+        }
+        //console.log("Checking to move from stores...")
+        if (creep.room.terminal && creep.room.storage && _.sum(creep.room.storage.store) > 0 && _.sum(creep.room.terminal.store) < creep.room.terminal.storeCapacity) {
+            var resources = _.keys(creep.room.storage.store);
+            var resource = ""
+            for (var tryResource of resources) {
+                //console.log(tryResource)
+                if (tryResource === RESOURCE_ENERGY) {
+                    //console.log(creep.room.name+" Not moving energy... pointless")
+                    continue;
+                }
+                if (creep.room.terminal.store[tryResource] > 50000) {
+                    //console.log(creep.room.name+" Too much "+tryResource+" in the terminal")
+                    continue;
+                }
+                if (tryResource === RESOURCE_OPS && creep.room.terminal.store[tryResource] > 10000) {
+                    //console.log(creep.room.name+" Too much "+tryResource+" in the terminal")
+                    continue;
+                }
+                if (creep.room.storage.store[tryResource] == 0) {
+                    //console.log(creep.room.name+" Not actually any "+tryResource+" in the storage")
+                    continue;
+                }
+                resource = tryResource
+                break
+            }
+            if (resource === "") {
+                //console.log(creep.room.name+" Not moving from stores")
+                return;
+            }
+            //console.log(creep.room.name+" Moving from stores...")
+            var res = creep.withdraw(creep.room.storage, resource);
+            if (res == ERR_NOT_IN_RANGE) {
+                if (creep.fatigue > 0) {
+                    creep.say("😴💤")
+                    return
+                }
+                creep.moveTo(creep.room.storage, { maxRooms: 1, visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
+                creep.say("Fe")
+            } else if (res == OK) {
+                creep.say("Ca")
+            } else {
+                console.log("Could not withdraw " + resource + " from storage " + res + " creep is carrying " + JSON.stringify(creep.store) + " in room " + creep.room.name)
+            }
+        }
+        creep.say("😴");
 
         // console.log(creep.id+": - end");
 
     },
-    goMining: function (creep) {
-        //console.log(creep.room.name+" shall we go mining?");
-        var mines = creep.room.find(FIND_MINERALS);
-        if (mines.length > 0) {
-            var mine = mines.pop();
-            var extractor = mine.pos.lookFor(LOOK_STRUCTURES).pop();
-            if (!extractor) {
-                //console.log("No extractor");
-                return;
-            }
-            creep.say("Mining");
-            creep.moveTo(mine, {visualizePathStyle: this.lineStyle});
-            if (extractor.cooldown > 0) {
-                creep.memory.sleeping = 1;
-                console.log("Extractor cooling down for " + extractor.cooldown);
-                return true;
-            }
-            var result = creep.harvest(mine);
-
-            if (result === OK) {
-                creep.memory.mining = true;
-            } else {
-                //console.log("Mining result "+result);
-            }
-            return true;
-        } else {
-            //console.log(creep.room.name+" Nothing to mine");
+    goMining: function (creep, roomData) {
+        //console.log(creep.room.name+ " Mining?")
+        if (!roomData.mine || !roomData.mineral) {
+            //console.log(creep.room.name+": No mine or mineral")
             creep.memory.mining = false;
             return false;
         }
+        if (roomData.mineral.mineralAmount < 1) {
+            //console.log("Not enough mineral "+roomData.mineral.mineralType+" in room "+creep.room.name+" to be worth mining");
+            creep.memory.mining = false;
+            return false;
+        }
+        if (!Game.rooms[creep.room.name].terminal) {
+            creep.memory.mining = false;
+            return false;
+        }
+        var stock = Game.rooms[creep.room.name].terminal.store[roomData.mineral.mineralType] ? Game.rooms[creep.room.name].terminal.store[roomData.mineral.mineralType] : 0
+        stock += Game.rooms[creep.room.name].storage.store[roomData.mineral.mineralType] ? Game.rooms[creep.room.name].storage.store[roomData.mineral.mineralType] : 0
+
+        if (stock > 100000) {
+            //console.log("Already have a lot of minerals in "+creep.room.name+"...")
+            creep.memory.mining = false;
+            return false
+        }
+        var distanceToMine = creep.pos.getRangeTo(roomData.mine)
+        if (distanceToMine < 2 && roomData.mine.cooldown > 0) {
+            if (_.sum(creep.store) > 0) {
+                creep.memory.sleeping = 1;
+                creep.say("⛏️😴")
+                //console.log(creep.room.name+" Extractor cooling down for " + roomData.mine.cooldown);
+                return true;
+            }
+            //console.log(creep.room.name+" Extractor cooling down for " + roomData.mine.cooldown);
+            return false;
+        }
+        creep.say("⛏️");
+
+        var result = distanceToMine < 2 ? creep.harvest(roomData.mineral) : ERR_NOT_IN_RANGE;
+        creep.memory.mining = true;
+        if (result === ERR_NOT_IN_RANGE) {
+            //console.log(creep.room.name+" Going to mine...")
+            if (creep.fatigue > 0) {
+                creep.say("😴💤")
+                return true
+            }
+            creep.moveTo(roomData.mine, { visualizePathStyle: this.lineStyle, maxRooms: 1, maxOps: 1000 });
+            return true;
+        }
+        if (result === OK) {
+            //console.log("Mined")
+
+        } else {
+            console.log("Can't mine - " + result)
+        }
+        return true;
+
     },
     findTarget: function (targets, creep) {
-        return creep.pos.findClosestByPath(targets);
+        return creep.pos.findClosestByRange(targets, { maxRooms: 1, maxOps: 1000 });
     }
 });
 

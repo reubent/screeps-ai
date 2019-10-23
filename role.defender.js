@@ -1,9 +1,9 @@
 var baseRole = require("baseRole");
 module.exports = Object.assign({}, baseRole, {
     units: [
-        TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
-        MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
-        ATTACK, ATTACK, ATTACK
+        TOUGH, TOUGH, TOUGH, TOUGH, //TOUGH, TOUGH, 
+        MOVE, MOVE, MOVE, MOVE,// MOVE, MOVE,
+        ATTACK, ATTACK, ATTACK, //ATTACK, ATTACK
     ],
     myType: "defender",
     maxToCreate: (room) => {
@@ -12,7 +12,7 @@ module.exports = Object.assign({}, baseRole, {
             var towers = room.find(FIND_STRUCTURES, {
                 filter: (o) => o.structureType === STRUCTURE_TOWER
             });
-            if (towers.length) {
+            if (towers.length && towers.length > 1) {
                 var power = towers.reduce((total, my) => total += my.energy, 0);
                 if (power < 200) {
                     return hostiles;
@@ -41,18 +41,13 @@ module.exports = Object.assign({}, baseRole, {
         [7, 39],
         [8, 41],
         [8, 43],
-                //[ 5, 18],
-                //[ 5, 12]
+        //[ 5, 18],
+        //[ 5, 12]
     ],
     run: function (creep) {
-
         if (typeof creep.memory.sleeping !== "undefined" && creep.memory.sleeping > 0) {
             creep.say("Wait!");
             creep.memory.sleeping--;
-            return;
-        }
-        if (creep.fatigue > 0) {
-            creep.say("Tired 😟");
             return;
         }
 
@@ -63,19 +58,23 @@ module.exports = Object.assign({}, baseRole, {
             creep.say('🔫 ATTACK', true);
             var attackResult = creep.attack(target);
             if (attackResult == ERR_NOT_IN_RANGE) {
-                creep.moveTo(target, {visualizePathStyle: this.lineStyle});
+                if (creep.fatigue > 0) {
+                    creep.say("Tired 😟");
+                    return;
+                }
+                creep.moveTo(target, { visualizePathStyle: this.lineStyle });
+                return
             } else if (attackResult != OK) {
                 console.log("Error attacking: " + attackResult);
-            }
-        } else if (!this.handleTtl(creep)) {
-            creep.say("👮 Guard", true);
-            var homePosition = this.homePositions[creep.memory.creepIndex];
-            creep.moveTo(homePosition[0], homePosition[1], {reusePath: 20, visualizePathStyle: this.lineStyle});
-            // if we created lots of defenders to repel an attack, kill them when we no longer need them
-            if (creep.memory.creepIndex > this.maxToCreate(creep.room) && Math.random > 0.85) {
-                creep.suicide();
+                return
             }
         }
-
+        creep.say("👮 Guard", true);
+        var homePosition = this.homePositions[creep.memory.creepIndex];
+        creep.moveTo(homePosition[0], homePosition[1], { reusePath: 20, visualizePathStyle: this.lineStyle });
+        // if we created lots of defenders to repel an attack, kill them when we no longer need them
+        if (creep.memory.creepIndex >= this.maxToCreate(creep.room) && Math.random() > 0.85) {
+            creep.suicide();
+        }
     }
 });
